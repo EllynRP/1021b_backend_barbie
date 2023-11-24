@@ -1,9 +1,12 @@
 import express from 'express'
 const app = express()
 app.use(express.json())
-//Tenho que ter uma rota post para cadastrar um filme
+import ListaFilme from './aplicacao/lista-filme.use-case'
+import BancoMongoDB from './infra/banco/banco-mongodb'
+import SalvaFilme from './aplicacao/salva-filme.use-case'
+import cors from 'cors'
+app.use(cors())
 
-//Salvar em algum lugar o filme que foi cadastrado.
 type Filme = {
     id:number,
     titulo:string,
@@ -11,7 +14,14 @@ type Filme = {
     imagem:string
 }
 let filmesCadastros:Filme[] = []
-app.post('/filmes',(req,res)=>{
+const bancoMongoDB = new BancoMongoDB()
+app.get('/filmes',async (req,res)=>{
+    //usem o listarFilme Usecase para listar os filmes
+    const listaFilme = new ListaFilme(bancoMongoDB)
+    const filmes = await listaFilme.executar()
+    res.send(filmes)
+})
+app.post('/filmes',async (req,res)=>{
     const {id,titulo,descricao,imagem} = req.body
     const filme = {
         id,
@@ -19,13 +29,22 @@ app.post('/filmes',(req,res)=>{
         descricao,
         imagem
     }
+    try{
+        const salvarFilme = new SalvaFilme(bancoMongoDB)
+        const filmes = await salvarFilme.execute(filme)
+        res.status(201).send(filmes)
+    }catch(error){ 
+        res.status(404).send("Filme repetido")
+    }
+
+    }
     //Como eu salvo o filme que foi cadastrado no meu vetor de filmes (Banco de dados)
-    filmesCadastros.push(filme)
-    res.status(201).send(filme)
-})
-app.get('/filmes',(req,res)=>{
-    res.send("Filmes Listados com sucesso")
-})
+    // const salvaFilme = new SalvaFilme(bancoMongoDB)
+    // const resposta = await salvaFilme.execute(filme)
+    // filmesCadastros.push(filme)
+    // res.status(201).send(filme)
+)
+
 
 app.get('/filmes/:id',(req,res)=>{
     const id = parseInt(req.params.id)
@@ -39,3 +58,7 @@ app.get('/filmes/:id',(req,res)=>{
 app.listen(3000,()=>{
     console.log('Servidor rodando na porta 3000')
 })
+
+//Tenho que ter uma rota post para cadastrar um filme
+
+//Salvar em algum lugar o filme que foi cadastrado.
